@@ -1,0 +1,168 @@
+# yii3-health-check
+
+## Install
+
+```bash
+composer require rasuvaeff/yii3-health-check
+```
+
+## Rules
+
+- Three endpoints: `LivenessEndpoint` (`/live`), `ReadinessEndpoint` (`/ready`), `HealthEndpoint` (`/health`).
+- **Never** put external service checks (DB, Redis) in liveness — only in readiness/health.
+- Liveness always returns `pass` 200. Readiness/health return 503 on `fail`.
+- Check names: `/^[a-z][a-z0-9_.-]*$/` — throws `InvalidCheckNameException` otherwise.
+- Exception in `check()` is caught and converted to `HealthResult::fail`.
+- Elapsed time > `warnThresholdMs` auto-upgrades `pass` → `warn`.
+- Aggregation: any `fail` → `fail`; any `warn` (no fail) → `warn`; all `pass` → `pass`.
+- Yii3 config-plugin ships `config/di.php` + `config/params.php` with `warnThresholdMs` and `livenessMessage`.
+- Namespace: `Rasuvaeff\Yii3HealthCheck`.
+
+## API
+
+### HealthResult
+
+```php
+HealthResult::pass(name: 'db')
+HealthResult::pass(name: 'db', message: 'Connected')
+HealthResult::warn(name: 'db', message: 'Slow', data: ['latencyMs' => 950])
+HealthResult::fail(name: 'db', message: 'Connection refused')
+
+$r->name        // string
+$r->status      // HealthStatus
+$r->message     // string
+$r->data        // array<string, mixed>
+$r->elapsedMs   // float (set by HealthChecker, not by caller)
+
+$r->withData(['rows' => 42])    // new instance
+$r->withElapsedMs(12.5)         // new instance
+$r->toArray()                   // omits elapsedMs:0 and data:[]
+```
+
+### HealthStatus
+
+```php
+HealthStatus::Pass  // 'pass' → HTTP 200
+HealthStatus::Warn  // 'warn' → HTTP 200
+HealthStatus::Fail  // 'fail' → HTTP 503
+```
+
+### HealthCheck (interface)
+
+```php
+interface HealthCheck {
+    public function name(): string;
+    public function check(): HealthResult;
+}
+```
+
+### CallbackHealthCheck
+
+```php
+new CallbackHealthCheck(
+    name: 'redis',
+    check: static fn(): HealthResult => HealthResult::pass(name: 'redis'),
+)
+```
+
+### HealthChecker
+
+```php
+$checker = new HealthChecker(
+    checks: [$dbCheck, $redisCheck],
+    clock: $psrClock,           // optional Psr\Clock\ClockInterface
+    warnThresholdMs: 1000.0,    // default 1000ms
+);
+
+$checker->add($check);
+$checker->has('database');                   // bool
+$results = $checker->run();                  // array<string, HealthResult>
+$results = $checker->runByName('database');  // array<string, HealthResult>
+
+HealthChecker::aggregateStatus($results);    // HealthStatus
+```
+
+### Endpoints (PSR-15 RequestHandlerInterface)
+
+```php
+new LivenessEndpoint(responseFactory: $f, statusMessage: 'alive')
+new ReadinessEndpoint(checker: $checker, responseFactory: $f)
+new HealthEndpoint(checker: $checker, responseFactory: $f)
+```
+
+### Yii3 DI wiring
+
+```php
+// config/di.php
+use Rasuvaeff\Yii3HealthCheck\HealthChecker;
+use Yiisoft\Definitions\Reference;
+
+return [
+    HealthChecker::class => [
+        '__construct()' => [
+            'checks' => [
+                Reference::to(DatabaseHealthCheck::class),
+                Reference::to(RedisHealthCheck::class),
+            ],
+            'warnThresholdMs' => $params['rasuvaeff/yii3-health-check']['warnThresholdMs'],
+        ],
+    ],
+];
+```
+
+### Yii3 routes
+
+```php
+Route::get('/live')->action(LivenessEndpoint::class),
+Route::get('/ready')->action(ReadinessEndpoint::class),
+Route::get('/health')->action(HealthEndpoint::class),
+```
+
+### Custom check implementation
+
+```php
+final readonly class DatabaseHealthCheck implements HealthCheck
+{
+    public function __construct(private ConnectionInterface $db) {}
+
+    public function name(): string { return 'database'; }
+
+    public function check(): HealthResult
+    {
+        try {
+            $this->db->createCommand('SELECT 1')->queryScalar();
+            return HealthResult::pass(name: 'database');
+        } catch (\Throwable $e) {
+            return HealthResult::fail(name: 'database', message: $e->getMessage());
+        }
+    }
+}
+```
+
+### Response format
+
+```json
+{
+    "status": "pass",
+    "checks": {
+        "database": {"name":"database","status":"pass","message":"","elapsedMs":2.1},
+        "redis":    {"name":"redis","status":"warn","message":"Check took 1243.0ms (threshold: 1000.0ms)","elapsedMs":1243.0}
+    }
+}
+```
+
+Liveness: `{"status":"pass","message":"alive"}`
+
+### Kubernetes probes
+
+```yaml
+livenessProbe:
+  httpGet: {path: /live, port: 8080}
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet: {path: /ready, port: 8080}
+  initialDelaySeconds: 5
+  periodSeconds: 10
+```
