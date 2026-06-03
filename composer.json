@@ -1,6 +1,8 @@
 {
     "name": "rasuvaeff/yii3-health-check",
     "description": "Health check endpoints for Yii3 applications",
+    "license": "BSD-3-Clause",
+    "type": "library",
     "keywords": [
         "health-check",
         "liveness",
@@ -8,8 +10,6 @@
         "readiness",
         "yii3"
     ],
-    "license": "BSD-3-Clause",
-    "type": "library",
     "authors": [
         {
             "name": "Victor Razuvaev",
