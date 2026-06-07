@@ -284,7 +284,7 @@ See [`examples/`](examples/) for runnable scripts and a full Yii3 wiring guide.
 ```bash
 make install
 make build
-make cs:fix
+make cs-fix
 make mutation
 ```
 
