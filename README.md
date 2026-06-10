@@ -4,7 +4,6 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/rasuvaeff/yii3-health-check.svg)](https://packagist.org/packages/rasuvaeff/yii3-health-check)
 [![Build](https://img.shields.io/github/actions/workflow/status/rasuvaeff/yii3-health-check/build.yml?branch=master)](https://github.com/rasuvaeff/yii3-health-check/actions)
 [![Static Analysis](https://img.shields.io/github/actions/workflow/status/rasuvaeff/yii3-health-check/static-analysis.yml?branch=master)](https://github.com/rasuvaeff/yii3-health-check/actions)
-[![Coverage](https://codecov.io/gh/rasuvaeff/yii3-health-check/branch/master/graph/badge.svg)](https://codecov.io/gh/rasuvaeff/yii3-health-check)
 [![Psalm Level](https://img.shields.io/badge/Psalm-1-blue.svg)](https://github.com/rasuvaeff/yii3-health-check/actions)
 [![PHP](https://img.shields.io/packagist/dependency-v/rasuvaeff/yii3-health-check/php)](https://packagist.org/packages/rasuvaeff/yii3-health-check)
 [![License](https://img.shields.io/packagist/l/rasuvaeff/yii3-health-check.svg)](LICENSE.md)
