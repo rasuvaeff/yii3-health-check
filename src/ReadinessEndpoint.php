@@ -12,11 +12,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * @api
  */
-final class ReadinessEndpoint implements RequestHandlerInterface
+final readonly class ReadinessEndpoint implements RequestHandlerInterface
 {
     public function __construct(
-        private readonly HealthChecker $checker,
-        private readonly ResponseFactoryInterface $responseFactory,
+        private HealthChecker $checker,
+        private ResponseFactoryInterface $responseFactory,
     ) {}
 
     #[\Override]
