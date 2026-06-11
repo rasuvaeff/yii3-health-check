@@ -12,11 +12,11 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * @api
  */
-final class LivenessEndpoint implements RequestHandlerInterface
+final readonly class LivenessEndpoint implements RequestHandlerInterface
 {
     public function __construct(
-        private readonly ResponseFactoryInterface $responseFactory,
-        private readonly string $statusMessage = 'alive',
+        private ResponseFactoryInterface $responseFactory,
+        private string $statusMessage = 'alive',
     ) {}
 
     #[\Override]
