@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Benchmarks;
 
-use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Rasuvaeff\Yii3HealthCheck\HealthChecker;
+use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Testo\Bench;
 
 final class HealthCheckerBench
