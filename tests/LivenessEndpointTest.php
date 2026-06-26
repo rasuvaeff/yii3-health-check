@@ -4,38 +4,38 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3HealthCheck\LivenessEndpoint;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Lifecycle\BeforeTest;
+use Testo\Test;
 
-#[CoversClass(LivenessEndpoint::class)]
-final class LivenessEndpointTest extends TestCase
+#[Test]
+#[Covers(LivenessEndpoint::class)]
+final class LivenessEndpointTest
 {
     private FakeResponseFactory $responseFactory;
 
-    #[\Override]
-    protected function setUp(): void
+    #[BeforeTest]
+    public function setUp(): void
     {
         $this->responseFactory = new FakeResponseFactory();
     }
 
-    #[Test]
     public function returns200WithPassStatus(): void
     {
         $endpoint = new LivenessEndpoint(responseFactory: $this->responseFactory);
 
         $response = $endpoint->handle(new FakeRequest());
 
-        $this->assertSame(200, $response->getStatusCode());
+        Assert::same($response->getStatusCode(), 200);
 
         /** @var FakeResponse $response */
         $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
         assert(is_array($body));
-        $this->assertSame('pass', $body['status']);
+        Assert::same($body['status'], 'pass');
     }
 
-    #[Test]
     public function returnsDefaultAliveMessage(): void
     {
         $endpoint = new LivenessEndpoint(responseFactory: $this->responseFactory);
@@ -45,10 +45,9 @@ final class LivenessEndpointTest extends TestCase
         /** @var FakeResponse $response */
         $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
         assert(is_array($body));
-        $this->assertSame('alive', $body['message']);
+        Assert::same($body['message'], 'alive');
     }
 
-    #[Test]
     public function returnsCustomMessage(): void
     {
         $endpoint = new LivenessEndpoint(
@@ -61,16 +60,15 @@ final class LivenessEndpointTest extends TestCase
         /** @var FakeResponse $response */
         $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
         assert(is_array($body));
-        $this->assertSame('ok', $body['message']);
+        Assert::same($body['message'], 'ok');
     }
 
-    #[Test]
     public function setsJsonContentTypeHeader(): void
     {
         $endpoint = new LivenessEndpoint(responseFactory: $this->responseFactory);
 
         $response = $endpoint->handle(new FakeRequest());
 
-        $this->assertSame('application/json', $response->getHeaderLine('content-type'));
+        Assert::same($response->getHeaderLine('content-type'), 'application/json');
     }
 }

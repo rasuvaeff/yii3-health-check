@@ -4,67 +4,63 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3HealthCheck\Exception\InvalidCheckNameException;
 use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Rasuvaeff\Yii3HealthCheck\HealthStatus;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Data\DataProvider;
+use Testo\Expect;
+use Testo\Test;
 
-#[CoversClass(HealthResult::class)]
-final class HealthResultTest extends TestCase
+#[Test]
+#[Covers(HealthResult::class)]
+final class HealthResultTest
 {
-    #[Test]
     public function passCreatesResultWithPassStatus(): void
     {
         $result = HealthResult::pass(name: 'app');
 
-        $this->assertSame(HealthStatus::Pass, $result->status);
-        $this->assertSame('app', $result->name);
-        $this->assertSame('', $result->message);
+        Assert::same($result->status, HealthStatus::Pass);
+        Assert::same($result->name, 'app');
+        Assert::same($result->message, '');
     }
 
-    #[Test]
     public function warnCreatesResultWithWarnStatus(): void
     {
         $result = HealthResult::warn(name: 'db', message: 'slow');
 
-        $this->assertSame(HealthStatus::Warn, $result->status);
-        $this->assertSame('slow', $result->message);
+        Assert::same($result->status, HealthStatus::Warn);
+        Assert::same($result->message, 'slow');
     }
 
-    #[Test]
     public function failCreatesResultWithFailStatus(): void
     {
         $result = HealthResult::fail(name: 'redis', message: 'connection refused');
 
-        $this->assertSame(HealthStatus::Fail, $result->status);
-        $this->assertSame('connection refused', $result->message);
+        Assert::same($result->status, HealthStatus::Fail);
+        Assert::same($result->message, 'connection refused');
     }
 
-    #[Test]
     public function withElapsedMsReturnsNewInstance(): void
     {
         $original = HealthResult::pass(name: 'app');
         $modified = $original->withElapsedMs(elapsedMs: 42.5);
 
-        $this->assertSame(0.0, $original->elapsedMs);
-        $this->assertSame(42.5, $modified->elapsedMs);
-        $this->assertSame($original->name, $modified->name);
+        Assert::same($original->elapsedMs, 0.0);
+        Assert::same($modified->elapsedMs, 42.5);
+        Assert::same($modified->name, $original->name);
     }
 
-    #[Test]
     public function withDataReturnsNewInstance(): void
     {
         $original = HealthResult::pass(name: 'app');
         $modified = $original->withData(data: ['key' => 'value']);
 
-        $this->assertSame([], $original->data);
-        $this->assertSame(['key' => 'value'], $modified->data);
+        Assert::same($original->data, []);
+        Assert::same($modified->data, ['key' => 'value']);
     }
 
-    #[Test]
     public function toArrayContainsAllFields(): void
     {
         $result = HealthResult::warn(name: 'db', message: 'slow')
@@ -73,59 +69,50 @@ final class HealthResultTest extends TestCase
 
         $array = $result->toArray();
 
-        $this->assertSame('db', $array['name']);
-        $this->assertSame('warn', $array['status']);
-        $this->assertSame('slow', $array['message']);
-        $this->assertSame(150.0, $array['elapsedMs']);
-        $this->assertSame(['latency' => 150], $array['data']);
+        Assert::same($array['name'], 'db');
+        Assert::same($array['status'], 'warn');
+        Assert::same($array['message'], 'slow');
+        Assert::same($array['elapsedMs'], 150.0);
+        Assert::same($array['data'], ['latency' => 150]);
     }
 
-    #[Test]
     public function toArrayOmitsZeroElapsed(): void
     {
         $result = HealthResult::pass(name: 'app');
         $array = $result->toArray();
 
-        $this->assertArrayNotHasKey('elapsedMs', $array);
+        Assert::array($array)->doesNotHaveKeys('elapsedMs');
     }
 
-    #[Test]
     public function toArrayOmitsEmptyData(): void
     {
         $result = HealthResult::pass(name: 'app');
         $array = $result->toArray();
 
-        $this->assertArrayNotHasKey('data', $array);
+        Assert::array($array)->doesNotHaveKeys('data');
     }
 
-    #[Test]
     public function throwsOnInvalidName(): void
     {
-        $this->expectException(InvalidCheckNameException::class);
+        Expect::exception(InvalidCheckNameException::class);
 
         HealthResult::pass(name: 'INVALID');
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function validNameProvider(): array
+    public static function validNameProvider(): iterable
     {
-        return [
-            'simple' => ['app'],
-            'dotted' => ['app.database'],
-            'hyphenated' => ['app-db'],
-            'with underscore' => ['app_db'],
-            'with numbers' => ['app2'],
-        ];
+        yield 'simple' => ['app'];
+        yield 'dotted' => ['app.database'];
+        yield 'hyphenated' => ['app-db'];
+        yield 'with underscore' => ['app_db'];
+        yield 'with numbers' => ['app2'];
     }
 
     #[DataProvider('validNameProvider')]
-    #[Test]
     public function acceptsValidNames(string $name): void
     {
         $result = HealthResult::pass(name: $name);
 
-        $this->assertSame($name, $result->name);
+        Assert::same($result->name, $name);
     }
 }
