@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
 use Rasuvaeff\Yii3HealthCheck\Exception\InvalidCheckNameException;
 use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Rasuvaeff\Yii3HealthCheck\HealthStatus;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Data\DataProvider;
+use Testo\Expect;
+use Testo\Test;
 
-#[CoversClass(CallbackHealthCheck::class)]
-final class CallbackHealthCheckTest extends TestCase
+#[Test]
+#[Covers(CallbackHealthCheck::class)]
+final class CallbackHealthCheckTest
 {
-    #[Test]
     public function returnsConfiguredName(): void
     {
         $check = new CallbackHealthCheck(
@@ -24,10 +25,9 @@ final class CallbackHealthCheckTest extends TestCase
             check: static fn(): HealthResult => HealthResult::pass(name: 'app'),
         );
 
-        $this->assertSame('app', $check->name());
+        Assert::same($check->name(), 'app');
     }
 
-    #[Test]
     public function executesCallbackAndReturnsResult(): void
     {
         $expected = HealthResult::pass(name: 'app');
@@ -36,10 +36,9 @@ final class CallbackHealthCheckTest extends TestCase
             check: static fn(): HealthResult => $expected,
         );
 
-        $this->assertSame($expected, $check->check());
+        Assert::same($check->check(), $expected);
     }
 
-    #[Test]
     public function callbackReturnsDifferentStatuses(): void
     {
         $check = new CallbackHealthCheck(
@@ -49,28 +48,22 @@ final class CallbackHealthCheckTest extends TestCase
 
         $result = $check->check();
 
-        $this->assertSame(HealthStatus::Fail, $result->status);
+        Assert::same($result->status, HealthStatus::Fail);
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function invalidNameProvider(): array
+    public static function invalidNameProvider(): iterable
     {
-        return [
-            'uppercase' => ['APP'],
-            'starts with digit' => ['1app'],
-            'spaces' => ['app name'],
-            'empty' => [''],
-            'special chars' => ['app@db'],
-        ];
+        yield 'uppercase' => ['APP'];
+        yield 'starts with digit' => ['1app'];
+        yield 'spaces' => ['app name'];
+        yield 'empty' => [''];
+        yield 'special chars' => ['app@db'];
     }
 
     #[DataProvider('invalidNameProvider')]
-    #[Test]
     public function throwsOnInvalidName(string $name): void
     {
-        $this->expectException(InvalidCheckNameException::class);
+        Expect::exception(InvalidCheckNameException::class);
 
         new CallbackHealthCheck(
             name: $name,
@@ -78,22 +71,16 @@ final class CallbackHealthCheckTest extends TestCase
         );
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function validNameProvider(): array
+    public static function validNameProvider(): iterable
     {
-        return [
-            'simple' => ['app'],
-            'dotted' => ['app.database'],
-            'hyphenated' => ['app-db'],
-            'underscore' => ['app_db'],
-            'with numbers' => ['app2'],
-        ];
+        yield 'simple' => ['app'];
+        yield 'dotted' => ['app.database'];
+        yield 'hyphenated' => ['app-db'];
+        yield 'underscore' => ['app_db'];
+        yield 'with numbers' => ['app2'];
     }
 
     #[DataProvider('validNameProvider')]
-    #[Test]
     public function acceptsValidNames(string $name): void
     {
         $check = new CallbackHealthCheck(
@@ -101,6 +88,6 @@ final class CallbackHealthCheckTest extends TestCase
             check: static fn(): HealthResult => HealthResult::pass(name: $name),
         );
 
-        $this->assertSame($name, $check->name());
+        Assert::same($check->name(), $name);
     }
 }

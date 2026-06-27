@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
-use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
 use Rasuvaeff\Yii3HealthCheck\HealthChecker;
 use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Rasuvaeff\Yii3HealthCheck\HealthStatus;
+use Testo\Assert;
+use Testo\Codecov\Covers;
+use Testo\Test;
 
-#[CoversClass(HealthChecker::class)]
-final class HealthCheckerTest extends TestCase
+#[Test]
+#[Covers(HealthChecker::class)]
+final class HealthCheckerTest
 {
-    #[Test]
     public function runReturnsResultsForAllChecks(): void
     {
         $checker = new HealthChecker(checks: [
@@ -25,12 +25,10 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertCount(2, $results);
-        $this->assertArrayHasKey('app', $results);
-        $this->assertArrayHasKey('db', $results);
+        Assert::count($results, 2);
+        Assert::array($results)->hasKeys('app', 'db');
     }
 
-    #[Test]
     public function runCatchesExceptionAndReturnsFail(): void
     {
         $checker = new HealthChecker(checks: [
@@ -44,11 +42,10 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Fail, $results['redis']->status);
-        $this->assertSame('Connection refused', $results['redis']->message);
+        Assert::same($results['redis']->status, HealthStatus::Fail);
+        Assert::same($results['redis']->message, 'Connection refused');
     }
 
-    #[Test]
     public function aggregateStatusReturnsPassWhenAllPass(): void
     {
         $results = [
@@ -56,10 +53,9 @@ final class HealthCheckerTest extends TestCase
             'db' => HealthResult::pass(name: 'db'),
         ];
 
-        $this->assertSame(HealthStatus::Pass, HealthChecker::aggregateStatus($results));
+        Assert::same(HealthChecker::aggregateStatus($results), HealthStatus::Pass);
     }
 
-    #[Test]
     public function aggregateStatusReturnsFailWhenAnyFails(): void
     {
         $results = [
@@ -67,10 +63,9 @@ final class HealthCheckerTest extends TestCase
             'db' => HealthResult::fail(name: 'db', message: 'down'),
         ];
 
-        $this->assertSame(HealthStatus::Fail, HealthChecker::aggregateStatus($results));
+        Assert::same(HealthChecker::aggregateStatus($results), HealthStatus::Fail);
     }
 
-    #[Test]
     public function aggregateStatusReturnsWarnWhenAnyWarnsAndNoFails(): void
     {
         $results = [
@@ -78,16 +73,14 @@ final class HealthCheckerTest extends TestCase
             'db' => HealthResult::warn(name: 'db', message: 'slow'),
         ];
 
-        $this->assertSame(HealthStatus::Warn, HealthChecker::aggregateStatus($results));
+        Assert::same(HealthChecker::aggregateStatus($results), HealthStatus::Warn);
     }
 
-    #[Test]
     public function aggregateStatusReturnsPassForEmptyResults(): void
     {
-        $this->assertSame(HealthStatus::Pass, HealthChecker::aggregateStatus(results: []));
+        Assert::same(HealthChecker::aggregateStatus(results: []), HealthStatus::Pass);
     }
 
-    #[Test]
     public function addRegistersCheck(): void
     {
         $checker = new HealthChecker();
@@ -98,10 +91,9 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertArrayHasKey('app', $results);
+        Assert::array($results)->hasKeys('app');
     }
 
-    #[Test]
     public function runByNameReturnsSingleResult(): void
     {
         $checker = new HealthChecker(checks: [
@@ -111,32 +103,29 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->runByName(name: 'app');
 
-        $this->assertCount(1, $results);
-        $this->assertArrayHasKey('app', $results);
+        Assert::count($results, 1);
+        Assert::array($results)->hasKeys('app');
     }
 
-    #[Test]
     public function runByNameReturnsEmptyForUnknown(): void
     {
         $checker = new HealthChecker();
 
         $results = $checker->runByName(name: 'unknown');
 
-        $this->assertSame([], $results);
+        Assert::same($results, []);
     }
 
-    #[Test]
     public function hasReturnsTrueForRegisteredCheck(): void
     {
         $checker = new HealthChecker(checks: [
             new CallbackHealthCheck(name: 'app', check: static fn(): HealthResult => HealthResult::pass(name: 'app')),
         ]);
 
-        $this->assertTrue($checker->has('app'));
-        $this->assertFalse($checker->has('unknown'));
+        Assert::true($checker->has('app'));
+        Assert::false($checker->has('unknown'));
     }
 
-    #[Test]
     public function runMeasuresElapsedTime(): void
     {
         $checker = new HealthChecker(checks: [
@@ -145,10 +134,9 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertGreaterThanOrEqual(0.0, $results['app']->elapsedMs);
+        Assert::true($results['app']->elapsedMs >= 0.0);
     }
 
-    #[Test]
     public function runReturnsWarnWhenCheckExceedsThreshold(): void
     {
         $callCount = 0;
@@ -172,10 +160,9 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Warn, $results['slow']->status);
+        Assert::same($results['slow']->status, HealthStatus::Warn);
     }
 
-    #[Test]
     public function runPreservesExistingWarnStatus(): void
     {
         $checker = new HealthChecker(
@@ -190,11 +177,10 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Warn, $results['app']->status);
-        $this->assertSame('degraded', $results['app']->message);
+        Assert::same($results['app']->status, HealthStatus::Warn);
+        Assert::same($results['app']->message, 'degraded');
     }
 
-    #[Test]
     public function runPreservesExistingFailStatus(): void
     {
         $checker = new HealthChecker(
@@ -209,11 +195,10 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Fail, $results['app']->status);
-        $this->assertSame('down', $results['app']->message);
+        Assert::same($results['app']->status, HealthStatus::Fail);
+        Assert::same($results['app']->message, 'down');
     }
 
-    #[Test]
     public function fastPassCheckDoesNotBecomeWarn(): void
     {
         $checker = new HealthChecker(
@@ -228,10 +213,9 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Pass, $results['app']->status);
+        Assert::same($results['app']->status, HealthStatus::Pass);
     }
 
-    #[Test]
     public function runWithClockMeasuresElapsedTime(): void
     {
         $clock = new FakeClock();
@@ -258,10 +242,9 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertGreaterThan(0.0, $results['app']->elapsedMs);
+        Assert::true($results['app']->elapsedMs > 0.0);
     }
 
-    #[Test]
     public function runWithClockWarnsOnSlowCheck(): void
     {
         $clock = new FakeClock();
@@ -283,7 +266,6 @@ final class HealthCheckerTest extends TestCase
 
         $results = $checker->run();
 
-        $this->assertSame(HealthStatus::Warn, $results['app']->status);
+        Assert::same($results['app']->status, HealthStatus::Warn);
     }
-
 }

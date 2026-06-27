@@ -31,6 +31,7 @@ docker run --rm -v "$PWD":/app -w /app composer:2 composer build
 docker run --rm -v "$PWD":/app -w /app composer:2 composer cs:fix
 docker run --rm -v "$PWD":/app -w /app composer:2 composer psalm
 docker run --rm -v "$PWD":/app -w /app composer:2 composer test
+docker run --rm -v "$PWD":/app -w /app composer:2 composer release-check
 ```
 
 Or with Make:
@@ -40,9 +41,14 @@ make build
 make cs-fix
 make psalm
 make test
+make test-coverage
+make mutation
+make release-check
 ```
 
 `composer.lock` is gitignored (library).
+`make test-coverage` and `make mutation` bootstrap `pcov` inside the
+`composer:2` container because the base image has no coverage driver.
 
 ## Invariants & gotchas
 
@@ -58,9 +64,22 @@ make test
 - `toArray()` omits `elapsedMs` when 0 and `data` when empty.
 - Endpoints implement PSR-15 `RequestHandlerInterface`.
 - Liveness endpoint has no external checks — always returns `pass` + 200.
+- Code: `declare(strict_types=1)`, `final readonly class`, `#[\Override]`,
+  explicit types.
+- `examples/` is part of the public contract: keep scripts runnable and update
+  `examples/README.md` when example usage changes.
+- **CI workflows are SHA-pinned.** Every `uses:` in `.github/workflows/*.yml`
+  references a 40-char commit SHA with a `# vN` trailing comment
+  (e.g. `actions/checkout@<sha> # v4`). Never revert to floating `@vN` tags.
+  Updates go through Dependabot, which bumps the SHA and preserves the comment.
+  Workflows also carry `permissions: { contents: read }` at workflow level and
+  `persist-credentials: false` on every `actions/checkout` step. Verify with
+  `zizmor --persona=auditor .github/` — must report no `unpinned-uses`,
+  `excessive-permissions`, or `artipacked` findings.
 
 ## When you finish
 
 - Update `README.md` (and `examples/` if usage changed); update `CHANGELOG.md`
   when releasing.
-- Re-run `composer build` and paste the output.
+- Re-run `composer build`; if the change affects the public API or release
+  process, also run `make release-check`. Paste the output.
