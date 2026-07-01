@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
+use Rasuvaeff\PropertyTesting\ArbitraryInterface;
+use Rasuvaeff\PropertyTesting\Gen;
+use Rasuvaeff\PropertyTesting\Property;
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
 use Rasuvaeff\Yii3HealthCheck\HealthChecker;
 use Rasuvaeff\Yii3HealthCheck\HealthResult;
@@ -267,5 +270,60 @@ final class HealthCheckerTest
         $results = $checker->run();
 
         Assert::same($results['app']->status, HealthStatus::Warn);
+    }
+
+    #[Property(runs: 400)]
+    public function aggregateReturnsWorstSeverity(array $codes): void
+    {
+        $results = self::resultsFromCodes($codes);
+
+        $expected = match (true) {
+            \in_array(2, $codes, strict: true) => HealthStatus::Fail,
+            \in_array(1, $codes, strict: true) => HealthStatus::Warn,
+            default => HealthStatus::Pass,
+        };
+
+        Assert::same(HealthChecker::aggregateStatus($results), $expected);
+    }
+
+    /** @return array<string, ArbitraryInterface> */
+    private function aggregateReturnsWorstSeverityGenerators(): array
+    {
+        return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
+    }
+
+    #[Property(runs: 400)]
+    public function aggregateIsOrderIndependent(array $codes): void
+    {
+        $results = self::resultsFromCodes($codes);
+
+        Assert::same(
+            HealthChecker::aggregateStatus(\array_reverse($results)),
+            HealthChecker::aggregateStatus($results),
+        );
+    }
+
+    /** @return array<string, ArbitraryInterface> */
+    private function aggregateIsOrderIndependentGenerators(): array
+    {
+        return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
+    }
+
+    /**
+     * @param list<int> $codes
+     *
+     * @return list<HealthResult>
+     */
+    private static function resultsFromCodes(array $codes): array
+    {
+        return \array_map(
+            static fn(int $code, int $i): HealthResult => match ($code) {
+                2 => HealthResult::fail(name: 'check' . $i),
+                1 => HealthResult::warn(name: 'check' . $i),
+                default => HealthResult::pass(name: 'check' . $i),
+            },
+            $codes,
+            \array_keys($codes),
+        );
     }
 }
