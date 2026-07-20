@@ -1,4 +1,5 @@
-# rasuvaeff/yii3-проверка работоспособности
+# rasuvaeff/yii3-health-check
+
 [![Stable Version](https://img.shields.io/packagist/v/rasuvaeff/yii3-health-check.svg)](https://packagist.org/packages/rasuvaeff/yii3-health-check)
 [![Total Downloads](https://img.shields.io/packagist/dt/rasuvaeff/yii3-health-check.svg)](https://packagist.org/packages/rasuvaeff/yii3-health-check)
 [![Build](https://img.shields.io/github/actions/workflow/status/rasuvaeff/yii3-health-check/build.yml?branch=master)](https://github.com/rasuvaeff/yii3-health-check/actions)
@@ -6,22 +7,33 @@
 [![Psalm Level](https://img.shields.io/badge/Psalm-1-blue.svg)](https://github.com/rasuvaeff/yii3-health-check/actions)
 [![PHP](https://img.shields.io/packagist/dependency-v/rasuvaeff/yii3-health-check/php)](https://packagist.org/packages/rasuvaeff/yii3-health-check)
 [![License](https://img.shields.io/packagist/l/rasuvaeff/yii3-health-check.svg)](LICENSE.md)
-Конечные точки проверки работоспособности для Yii3: `/live`, `/ready`, `/health`. Обработчики запросов PSR-15 с составными проверками, отслеживанием прошедшего времени и поддержкой зондов Kubernetes.
+[English version](README.md)
 
- > Используете помощника по программированию с искусственным интеллектом? [llms.txt](llms.txt) содержит компактную ссылку на API, готовую для вставки в контекст. @@ЛИНИЯ@@
+Health check эндпоинты для Yii3: `/live`, `/ready`, `/health`. PSR-15-обработчики
+запросов с композитными проверками, замером затраченного времени и поддержкой
+Kubernetes-проб.
+
+> Используете AI-ассистента? В [llms.txt](llms.txt) — компактный API-справочник,
+> который можно вставить прямо в контекст.
+
 ## Требования
+
 - PHP 8.3+
- - `psr/lock` ^1.0
- - `psr/http-factory` ^1.0
- - `psr/http-message` ^2.0
- - `psr/http-server-handler` ^1.0
+- `psr/clock` ^1.0
+- `psr/http-factory` ^1.0
+- `psr/http-message` ^2.0
+- `psr/http-server-handler` ^1.0
 
 ## Установка
+
 ```bash
 composer require rasuvaeff/yii3-health-check
 ```
+
 ## Использование
+
 ### 1. Регистрация маршрутов
+
 ```php
 // config/routes.php
 use Rasuvaeff\Yii3HealthCheck\HealthEndpoint;
@@ -35,8 +47,10 @@ return [
     Route::get('/health')->action(HealthEndpoint::class)->name('health.full'),
 ];
 ```
-### 2. Зарегистрируйте свои чеки в DI
-Пакет поставляется с `config/di.php` и `config/params.php` через config-plugin. Расширьте `HealthChecker` своими собственными проверками:
+
+### 2. Регистрация проверок в DI
+
+Пакет поставляет `config/di.php` и `config/params.php` через config-plugin. Расширьте `HealthChecker` собственными проверками:
 
 ```php
 // config/di.php
@@ -57,7 +71,9 @@ return [
     ],
 ];
 ```
-### 3. Внедрите свои проверки
+
+### 3. Реализация собственных проверок
+
 ```php
 // src/Infrastructure/Health/DatabaseHealthCheck.php
 use Rasuvaeff\Yii3HealthCheck\HealthCheck;
@@ -84,7 +100,8 @@ final readonly class DatabaseHealthCheck implements HealthCheck
     }
 }
 ```
-Для встроенных проверок без специального класса используйте CallbackHealthCheck:
+
+Для разовых проверок без выделенного класса используйте `CallbackHealthCheck`:
 
 ```php
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
@@ -105,16 +122,22 @@ new CallbackHealthCheck(
     },
 )
 ```
-## Живость против готовности
-| Конечная точка | Обработчик | Чеки | зонд k8s | При неудаче |
- |---|---|---|---|---|
- | `/жить` | `LivenessEndpoint` | Нет (всегда проходит) | `livenessProbe` | Перезапуск контейнера |
- | `/готов` | `ReadinessEndpoint` | Все зарегистрированные чеки | `readinessProbe` | Удален из балансировщика нагрузки |
- | `/здоровье` | `HealthEndpoint` | Все зарегистрированные чеки | Мониторинг/панель мониторинга | — |
 
- **Правило:** никогда не устанавливайте проверки работоспособности внешних служб (БД, Redis) — медленная БД перезапустит ваш контейнер. Ставьте их только на готовность. @@ЛИНИЯ@@
+## Liveness vs Readiness
+
+| Эндпоинт | Обработчик | Проверки | k8s probe | При сбое |
+|---|---|---|---|---|
+| `/live` | `LivenessEndpoint` | Нет (всегда pass) | `livenessProbe` | Перезапуск контейнера |
+| `/ready` | `ReadinessEndpoint` | Все зарегистрированные проверки | `readinessProbe` | Вывод из балансировщика |
+| `/health` | `HealthEndpoint` | Все зарегистрированные проверки | Мониторинг/дашборд | — |
+
+**Правило:** никогда не помещайте проверки внешних сервисов (БД, Redis) в liveness —
+медленная БД приведёт к перезапуску контейнера. Их место — только в readiness.
+
 ## Справочник по API
+
 ### `HealthResult`
+
 ```php
 HealthResult::pass(name: 'db')
 HealthResult::pass(name: 'db', message: 'Connected')
@@ -125,41 +148,48 @@ $result->name       // string
 $result->status     // HealthStatus
 $result->message    // string
 $result->data       // array<string, mixed>
-$result->elapsedMs  // float (set by HealthChecker)
+$result->elapsedMs  // float (устанавливается HealthChecker)
 
-$result->withData(['rows' => 42])   // returns new instance
-$result->withElapsedMs(12.5)        // returns new instance
-$result->toArray()                  // array, omits elapsedMs:0 and data:[], always includes message
+$result->withData(['rows' => 42])   // возвращает новый экземпляр
+$result->withElapsedMs(12.5)        // возвращает новый экземпляр
+$result->toArray()                  // array, пропускает elapsedMs:0 и data:[], всегда включает message
 ```
-### `Статус здоровья`
+
+### `HealthStatus`
+
 ```php
 HealthStatus::Pass  // 'pass' → HTTP 200
 HealthStatus::Warn  // 'warn' → HTTP 200
 HealthStatus::Fail  // 'fail' → HTTP 503
 ```
+
 ### `HealthChecker`
+
 ```php
 $checker = new HealthChecker(
     checks: [$dbCheck, $redisCheck],
-    clock: $psrClock,          // optional PSR-20, default microtime()
-    warnThresholdMs: 500.0,    // default 1000.0
+    clock: $psrClock,          // опционально PSR-20, по умолчанию microtime()
+    warnThresholdMs: 500.0,    // по умолчанию 1000.0
 );
 
-$checker->add($check);                        // add a check at runtime
+$checker->add($check);                        // добавить проверку во время выполнения
 $checker->has('database');                    // bool
 $results = $checker->run();                   // array<string, HealthResult>
 $results = $checker->runByName('database');   // array<string, HealthResult>
 
 HealthChecker::aggregateStatus($results);     // HealthStatus
 ```
+
 Правила агрегации:
 
- | Состояние | Результат |
- |---|---|
- | Любая `провалка` | `провалиться` |
- | Никаких «предупреждений», никаких «сбоев» | `предупреждать` |
- | Все `пройдено` | `пройти` | @@ЛИНИЯ@@
-### Интерфейс «HealthCheck»
+| Условие | Результат |
+|---|---|
+| Есть `fail` | `fail` |
+| Есть `warn`, без `fail` | `warn` |
+| Все `pass` | `pass` |
+
+### Интерфейс `HealthCheck`
+
 ```php
 interface HealthCheck
 {
@@ -167,24 +197,33 @@ interface HealthCheck
     public function check(): HealthResult;
 }
 ```
-Исключение, выданное функцией `check()`, перехватывается и преобразуется в `HealthResult::fail`. @@ЛИНИЯ@@
+
+Исключение, брошенное из `check()`, перехватывается и превращается в `HealthResult::fail`.
+
 ### `LivenessEndpoint`
+
 ```php
 new LivenessEndpoint(
     responseFactory: $factory,
-    statusMessage: 'alive',    // optional, default 'alive'
+    statusMessage: 'alive',    // опционально, по умолчанию 'alive'
 )
 ```
-Всегда возвращает HTTP 200. Никогда не зависит от внешних сервисов. @@ЛИНИЯ@@
+
+Всегда возвращает HTTP 200. Никогда не зависит от внешних сервисов.
+
 ```json
 {"status":"pass","message":"alive"}
 ```
-### `ReadinessEndpoint`/`HealthEndpoint`
+
+### `ReadinessEndpoint` / `HealthEndpoint`
+
 ```php
 new ReadinessEndpoint(checker: $checker, responseFactory: $factory)
 new HealthEndpoint(checker: $checker, responseFactory: $factory)
 ```
-Оба запускают все зарегистрированные проверки и возвращают один и тот же формат JSON. @@ЛИНИЯ@@
+
+Оба запускают все зарегистрированные проверки и возвращают одинаковый JSON-формат.
+
 ```json
 {
     "status": "warn",
@@ -194,15 +233,20 @@ new HealthEndpoint(checker: $checker, responseFactory: $factory)
     }
 }
 ```
+
 ## Порог предупреждения
-`warnThresholdMs` (по умолчанию: 1000 мс) автоматически обновляет `pass` → `warn`, когда проверка занимает слишком много времени. Существующие статусы «предупреждение» и «сбой» никогда не понижаются:
+
+`warnThresholdMs` (по умолчанию: 1000ms) автоматически повышает `pass` → `warn`,
+когда проверка выполняется слишком долго. Существующие статусы `warn` и `fail`
+никогда не понижаются:
 
 ```php
 // warnThresholdMs: 500
 // database check took 750ms → upgraded to warn automatically
 {"name":"database","status":"warn","message":"Check took 750.0ms (threshold: 500.0ms)","elapsedMs":750.0}
 ```
-Настройте через `params.php`:
+
+Настройка через `params.php`:
 
 ```php
 'rasuvaeff/yii3-health-check' => [
@@ -210,7 +254,9 @@ new HealthEndpoint(checker: $checker, responseFactory: $factory)
     'livenessMessage' => 'alive',
 ],
 ```
-## Зонды Kubernetes
+
+## Kubernetes-пробы
+
 ```yaml
 livenessProbe:
   httpGet:
@@ -228,19 +274,27 @@ readinessProbe:
   periodSeconds: 10
   failureThreshold: 3
 ```
+
 ## Безопасность
-- Проверенные имена проверены: `/^[a-z][a-z0-9_.-]*$/`
- - Обратные вызовы контролируются разработчиком, пользовательский ввод не выполняется
- - Liveness никогда не раскрывает внутреннее состояние службы
+
+- Имена проверок валидируются: `/^[a-z][a-z0-9_.-]*$/`
+- Колбэки контролирует разработчик — пользовательский ввод не выполняется
+- Liveness никогда не раскрывает состояние внутренних сервисов
 
 ## Примеры
-См. [`examples/`](examples/) для работоспособных скриптов и полное руководство по подключению Yii3. @@ЛИНИЯ@@
+
+См. [`examples/`](examples/) — запускаемые скрипты и полное руководство по
+интеграции с Yii3.
+
 ## Разработка
+
 ```bash
 make install
 make build
 make cs-fix
 make mutation
 ```
+
 ## Лицензия
-BSD-3-пункт. См. [LICENSE.md](LICENSE.md).
+
+BSD-3-Clause. См. [LICENSE.md](LICENSE.md).
