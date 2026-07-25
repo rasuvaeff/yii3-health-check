@@ -58,6 +58,7 @@ final class CallbackHealthCheckTest
         yield 'spaces' => ['app name'];
         yield 'empty' => [''];
         yield 'special chars' => ['app@db'];
+        yield 'trailing newline' => ["app\n"];
     }
 
     #[DataProvider('invalidNameProvider')]

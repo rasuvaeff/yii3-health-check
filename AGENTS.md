@@ -52,7 +52,7 @@ make release-check
 
 ## Invariants & gotchas
 
-- Check name regex: `/^[a-z][a-z0-9_.-]*$/`.
+- Check name regex: `/^[a-z][a-z0-9_.-]*\z/`.
 - `HealthStatus`: `pass`, `warn`, `fail`. Aggregation: any `fail` → `fail`,
   any `warn` (no `fail`) → `warn`, all `pass` → `pass`.
 - HTTP mapping: `pass`/`warn` → 200, `fail` → 503.

@@ -99,6 +99,13 @@ final class HealthResultTest
         HealthResult::pass(name: 'INVALID');
     }
 
+    public function throwsOnNameWithTrailingNewline(): void
+    {
+        Expect::exception(InvalidCheckNameException::class);
+
+        HealthResult::pass(name: "app\n");
+    }
+
     public static function validNameProvider(): iterable
     {
         yield 'simple' => ['app'];

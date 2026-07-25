@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 — 2026-07-25
+
+- Reject trailing newlines in check-name validation: anchor the name pattern
+  with `\z` instead of `$` in `HealthResult::NAME_PATTERN` and in
+  `CallbackHealthCheck::validateName()` (PCRE `$` matches before a trailing
+  `\n`, which let `"<name>\n"` pass and reach the JSON response).
+
 ## 1.0.2 — 2026-06-30
 
 - Add `/benchmarks` and `/Makefile` to `.gitattributes` export-ignore.

@@ -41,7 +41,7 @@ final class CallbackHealthCheck implements HealthCheck
 
     private function validateName(string $name): void
     {
-        if (!preg_match('/^[a-z][a-z0-9_.-]*$/', $name)) {
+        if (!preg_match('/^[a-z][a-z0-9_.-]*\z/', $name)) {
             throw new Exception\InvalidCheckNameException(
                 message: sprintf('Invalid check name "%s"', $name),
             );
