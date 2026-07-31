@@ -32,6 +32,7 @@ final class HealthResultTest
 
         Assert::same($result->status, HealthStatus::Warn);
         Assert::same($result->message, 'slow');
+        Assert::same($result->elapsedMs, 0.0);
     }
 
     public function failCreatesResultWithFailStatus(): void
@@ -40,6 +41,7 @@ final class HealthResultTest
 
         Assert::same($result->status, HealthStatus::Fail);
         Assert::same($result->message, 'connection refused');
+        Assert::same($result->elapsedMs, 0.0);
     }
 
     public function passAcceptsData(): void
