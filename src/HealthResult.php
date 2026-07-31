@@ -19,9 +19,9 @@ final readonly class HealthResult
     private function __construct(
         string $name,
         public HealthStatus $status,
-        public string $message = '',
-        public array $data = [],
-        public float $elapsedMs = 0.0,
+        public string $message,
+        public array $data,
+        public float $elapsedMs,
     ) {
         $this->validateName($name);
 
@@ -33,7 +33,7 @@ final readonly class HealthResult
      */
     public static function pass(string $name, string $message = '', array $data = []): self
     {
-        return new self(name: $name, status: HealthStatus::Pass, message: $message, data: $data);
+        return new self(name: $name, status: HealthStatus::Pass, message: $message, data: $data, elapsedMs: 0.0);
     }
 
     /**
@@ -41,7 +41,7 @@ final readonly class HealthResult
      */
     public static function warn(string $name, string $message = '', array $data = []): self
     {
-        return new self(name: $name, status: HealthStatus::Warn, message: $message, data: $data);
+        return new self(name: $name, status: HealthStatus::Warn, message: $message, data: $data, elapsedMs: 0.0);
     }
 
     /**
@@ -49,7 +49,7 @@ final readonly class HealthResult
      */
     public static function fail(string $name, string $message = '', array $data = []): self
     {
-        return new self(name: $name, status: HealthStatus::Fail, message: $message, data: $data);
+        return new self(name: $name, status: HealthStatus::Fail, message: $message, data: $data, elapsedMs: 0.0);
     }
 
     /**
