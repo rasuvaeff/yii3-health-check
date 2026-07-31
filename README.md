@@ -130,15 +130,17 @@ new CallbackHealthCheck(
 
 **Rule:** never put external service checks (DB, Redis) in liveness — a slow DB would restart your container. Put them only in readiness.
 
+`/ready` and `/health` run the same checks and return the same JSON — the difference is the audience. `/ready` is for automation (load balancer, Kubernetes) that decides whether to route traffic; `/health` is for humans, dashboards and external monitoring. Keeping them as separate routes lets you apply different access rules — e.g. `/ready` reachable by the orchestrator only, `/health` behind auth.
+
 ## API reference
 
 ### `HealthResult`
 
 ```php
 HealthResult::pass(name: 'db')
-HealthResult::pass(name: 'db', message: 'Connected')
+HealthResult::pass(name: 'db', message: 'Connected', data: ['latencyMs' => 2.1])
 HealthResult::warn(name: 'db', message: 'Slow', data: ['latencyMs' => 950])
-HealthResult::fail(name: 'db', message: 'Connection refused')
+HealthResult::fail(name: 'db', message: 'Connection refused', data: ['errno' => 111])
 
 $result->name       // string
 $result->status     // HealthStatus
@@ -237,12 +239,12 @@ Both run all registered checks and return the same JSON format.
 
 ## Warn threshold
 
-`warnThresholdMs` (default: 1000ms) automatically upgrades `pass` → `warn` when a check takes too long. Existing `warn` and `fail` statuses are never downgraded:
+`warnThresholdMs` (default: 1000ms) automatically upgrades `pass` → `warn` when a check takes too long. Existing `warn` and `fail` statuses are never downgraded. The original `message` is kept (the threshold note is appended after `; `) and `data` is preserved:
 
 ```php
 // warnThresholdMs: 500
 // database check took 750ms → upgraded to warn automatically
-{"name":"database","status":"warn","message":"Check took 750.0ms (threshold: 500.0ms)","elapsedMs":750.0}
+{"name":"database","status":"warn","message":"Connected; Check took 750.0ms (threshold: 500.0ms)","elapsedMs":750.0}
 ```
 
 Configure via `params.php`:

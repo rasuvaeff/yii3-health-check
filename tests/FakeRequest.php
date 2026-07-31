@@ -11,13 +11,13 @@ use Psr\Http\Message\UriInterface;
 /**
  * @internal
  */
-final class FakeRequest implements ServerRequestInterface
+final readonly class FakeRequest implements ServerRequestInterface
 {
     /**
      * @param array<string, mixed> $serverParams
      */
     public function __construct(
-        private readonly array $serverParams = [],
+        private array $serverParams = [],
     ) {}
 
     /**

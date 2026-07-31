@@ -15,7 +15,8 @@ composer require rasuvaeff/yii3-health-check
 - Checks are keyed by name: `add()`/constructor silently replace a check with the same name. `runByName()` with an unknown name returns `[]`, and `aggregateStatus([])` is `pass` — guard with `has()`.
 - `/ready`/`/health` expose raw exception messages and topology — restrict access (internal port, ACL). No per-check timeout: set connect/read timeouts inside each check.
 - Exception in `check()` is caught and converted to `HealthResult::fail`.
-- Elapsed time > `warnThresholdMs` auto-upgrades `pass` → `warn`.
+- Elapsed time > `warnThresholdMs` auto-upgrades `pass` → `warn`; the original `message` is kept (threshold note appended after `; `) and `data` is preserved.
+- `/ready` = automation (LB/k8s routing decision), `/health` = humans/dashboards; same checks and JSON, separate routes for separate access rules.
 - Aggregation: any `fail` → `fail`; any `warn` (no fail) → `warn`; all `pass` → `pass`.
 - Yii3 config-plugin ships `config/di.php` + `config/params.php` with `warnThresholdMs` and `livenessMessage`.
 - Namespace: `Rasuvaeff\Yii3HealthCheck`.
@@ -26,9 +27,9 @@ composer require rasuvaeff/yii3-health-check
 
 ```php
 HealthResult::pass(name: 'db')
-HealthResult::pass(name: 'db', message: 'Connected')
+HealthResult::pass(name: 'db', message: 'Connected', data: ['latencyMs' => 2.1])
 HealthResult::warn(name: 'db', message: 'Slow', data: ['latencyMs' => 950])
-HealthResult::fail(name: 'db', message: 'Connection refused')
+HealthResult::fail(name: 'db', message: 'Connection refused', data: ['errno' => 111])
 
 $r->name        // string
 $r->status      // HealthStatus
