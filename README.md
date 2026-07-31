@@ -184,12 +184,17 @@ Aggregation rules:
 | Any `warn`, no `fail` | `warn` |
 | All `pass` | `pass` |
 
+Behavior notes:
+
+- `runByName()` with an unknown name returns `[]`, and `aggregateStatus([])` is `pass` — a typo in the check name looks healthy. Guard with `has()` when the name comes from configuration.
+- Checks are keyed by name: `add()` and the constructor silently replace an existing check with the same name.
+
 ### `HealthCheck` interface
 
 ```php
 interface HealthCheck
 {
-    public function name(): string;   // /^[a-z][a-z0-9_.-]*$/
+    public function name(): string;   // /^[a-z][a-z0-9_.-]*\z/
     public function check(): HealthResult;
 }
 ```
@@ -271,9 +276,11 @@ readinessProbe:
 
 ## Security
 
-- Check names validated: `/^[a-z][a-z0-9_.-]*$/`
+- Check names validated: `/^[a-z][a-z0-9_.-]*\z/` (`\z` anchor — a trailing newline is rejected)
 - Callbacks are developer-controlled, no user input executed
 - Liveness never exposes internal service state
+- `/ready` and `/health` expose infrastructure topology and raw exception messages (`$e->getMessage()` may contain hosts or DSN details) — serve them on an internal port or restrict access (network policy, ACL, auth middleware)
+- There is no per-check timeout (synchronous PHP-FPM cannot enforce one) — set connect/read timeouts inside each check so a hung dependency cannot stall `/ready`
 
 ## Examples
 
