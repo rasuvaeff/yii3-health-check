@@ -14,18 +14,14 @@ final class HealthChecker
     /** @var array<string, HealthCheck> */
     private array $checks = [];
 
-    private float $warnThresholdMs;
-
     /**
      * @param iterable<HealthCheck> $checks
      */
     public function __construct(
         iterable $checks = [],
         private readonly ?ClockInterface $clock = null,
-        float $warnThresholdMs = 1000.0,
+        private readonly float $warnThresholdMs = 1000.0,
     ) {
-        $this->warnThresholdMs = $warnThresholdMs;
-
         foreach ($checks as $check) {
             $this->checks[$check->name()] = $check;
         }
@@ -106,9 +102,12 @@ final class HealthChecker
         $result = $result->withElapsedMs($elapsed);
 
         if ($result->status === HealthStatus::Pass && $elapsed > $this->warnThresholdMs) {
+            $thresholdMessage = sprintf('Check took %.1fms (threshold: %.1fms)', $elapsed, $this->warnThresholdMs);
+
             $result = HealthResult::warn(
                 name: $check->name(),
-                message: sprintf('Check took %.1fms (threshold: %.1fms)', $elapsed, $this->warnThresholdMs),
+                message: $result->message === '' ? $thresholdMessage : $result->message . '; ' . $thresholdMessage,
+                data: $result->data,
             )->withElapsedMs($elapsed);
         }
 
@@ -117,7 +116,7 @@ final class HealthChecker
 
     private function nowMicrotime(): float
     {
-        if ($this->clock !== null) {
+        if ($this->clock instanceof \Psr\Clock\ClockInterface) {
             $now = $this->clock->now();
 
             return (float) $now->format('U.u') * 1000.0;

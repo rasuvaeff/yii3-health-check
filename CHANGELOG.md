@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.1.0 — 2026-07-31
+
+- `warnThresholdMs` upgrade (`pass` → `warn`) now preserves the original
+  result: `message` is kept with the threshold note appended after `; `,
+  and `data` is no longer dropped.
+- Add `data` parameter to `HealthResult::pass()` and `HealthResult::fail()`
+  (symmetry with `warn()`).
+- Deduplicate `HealthEndpoint`/`ReadinessEndpoint` via the `@internal`
+  `ChecksJsonResponse` helper. No public API change.
+- Docs: explain the `/health` vs `/ready` split (automation vs
+  humans/dashboards, separate access rules).
+
 ## 1.0.4 — 2026-07-31
 
 - Add missing `@api` annotation to the `HealthStatus` enum.

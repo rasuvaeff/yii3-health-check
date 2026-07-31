@@ -248,6 +248,54 @@ final class HealthCheckerTest
         Assert::true($results['app']->elapsedMs > 0.0);
     }
 
+    public function thresholdUpgradePreservesMessageAndData(): void
+    {
+        $clock = new FakeClock();
+
+        $checker = new HealthChecker(
+            checks: [
+                new CallbackHealthCheck(
+                    name: 'db',
+                    check: static function () use ($clock): HealthResult {
+                        $clock->advanceByMilliseconds(500.0);
+
+                        return HealthResult::pass(name: 'db', message: 'Connected', data: ['rows' => 42]);
+                    },
+                ),
+            ],
+            clock: $clock,
+            warnThresholdMs: 100.0,
+        );
+
+        $result = $checker->run()['db'];
+
+        Assert::same($result->status, HealthStatus::Warn);
+        Assert::same($result->data, ['rows' => 42]);
+        Assert::same($result->message, 'Connected; Check took 500.0ms (threshold: 100.0ms)');
+    }
+
+    public function thresholdUpgradeWithEmptyMessageUsesThresholdMessageOnly(): void
+    {
+        $clock = new FakeClock();
+
+        $checker = new HealthChecker(
+            checks: [
+                new CallbackHealthCheck(
+                    name: 'db',
+                    check: static function () use ($clock): HealthResult {
+                        $clock->advanceByMilliseconds(500.0);
+
+                        return HealthResult::pass(name: 'db');
+                    },
+                ),
+            ],
+            clock: $clock,
+            warnThresholdMs: 100.0,
+        );
+
+        Assert::same($checker->run()['db']->message, 'Check took 500.0ms (threshold: 100.0ms)');
+    }
+
     public function runWithClockWarnsOnSlowCheck(): void
     {
         $clock = new FakeClock();
@@ -275,7 +323,7 @@ final class HealthCheckerTest
     #[Property(runs: 400)]
     public function aggregateReturnsWorstSeverity(array $codes): void
     {
-        $results = self::resultsFromCodes($codes);
+        $results = $this->resultsFromCodes($codes);
 
         $expected = match (true) {
             \in_array(2, $codes, strict: true) => HealthStatus::Fail,
@@ -287,7 +335,7 @@ final class HealthCheckerTest
     }
 
     /** @return array<string, ArbitraryInterface> */
-    private function aggregateReturnsWorstSeverityGenerators(): array
+    public static function aggregateReturnsWorstSeverityGenerators(): array
     {
         return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
     }
@@ -295,7 +343,7 @@ final class HealthCheckerTest
     #[Property(runs: 400)]
     public function aggregateIsOrderIndependent(array $codes): void
     {
-        $results = self::resultsFromCodes($codes);
+        $results = $this->resultsFromCodes($codes);
 
         Assert::same(
             HealthChecker::aggregateStatus(\array_reverse($results)),
@@ -304,9 +352,41 @@ final class HealthCheckerTest
     }
 
     /** @return array<string, ArbitraryInterface> */
-    private function aggregateIsOrderIndependentGenerators(): array
+    public static function aggregateIsOrderIndependentGenerators(): array
     {
         return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
+    }
+
+    #[Property(runs: 200)]
+    public function thresholdUpgradeNeverLosesData(array $data): void
+    {
+        $clock = new FakeClock();
+
+        $checker = new HealthChecker(
+            checks: [
+                new CallbackHealthCheck(
+                    name: 'db',
+                    check: static function () use ($clock, $data): HealthResult {
+                        $clock->advanceByMilliseconds(500.0);
+
+                        return HealthResult::pass(name: 'db', data: $data);
+                    },
+                ),
+            ],
+            clock: $clock,
+            warnThresholdMs: 100.0,
+        );
+
+        $result = $checker->run()['db'];
+
+        Assert::same($result->status, HealthStatus::Warn);
+        Assert::same($result->data, $data);
+    }
+
+    /** @return array<string, ArbitraryInterface> */
+    public static function thresholdUpgradeNeverLosesDataGenerators(): array
+    {
+        return ['data' => Gen::arrayOf(Gen::intBetween(-1000, 1000))];
     }
 
     /**
@@ -314,7 +394,7 @@ final class HealthCheckerTest
      *
      * @return list<HealthResult>
      */
-    private static function resultsFromCodes(array $codes): array
+    private function resultsFromCodes(array $codes): array
     {
         return \array_map(
             static fn(int $code, int $i): HealthResult => match ($code) {

@@ -20,7 +20,7 @@ final class FakeClock implements ClockInterface
 
     public function advanceByMilliseconds(float $ms): void
     {
-        $this->now = $this->now->modify(sprintf('+%f second', $ms / 1000.0));
+        $this->now = $this->now->modify(sprintf('+%d microseconds', (int) round($ms * 1000.0)));
     }
 
     #[\Override]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
+use Rasuvaeff\Yii3HealthCheck\ChecksJsonResponse;
 use Rasuvaeff\Yii3HealthCheck\HealthChecker;
 use Rasuvaeff\Yii3HealthCheck\HealthResult;
 use Rasuvaeff\Yii3HealthCheck\ReadinessEndpoint;
@@ -15,6 +16,7 @@ use Testo\Test;
 
 #[Test]
 #[Covers(ReadinessEndpoint::class)]
+#[Covers(ChecksJsonResponse::class)]
 final class ReadinessEndpointTest
 {
     private FakeResponseFactory $responseFactory;

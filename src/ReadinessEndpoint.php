@@ -22,30 +22,6 @@ final readonly class ReadinessEndpoint implements RequestHandlerInterface
     #[\Override]
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $results = $this->checker->run();
-        $status = HealthChecker::aggregateStatus($results);
-
-        return $this->createResponse($results, $status);
-    }
-
-    /**
-     * @param array<string, HealthResult> $results
-     */
-    private function createResponse(array $results, HealthStatus $status): ResponseInterface
-    {
-        $httpStatus = $status === HealthStatus::Fail ? 503 : 200;
-
-        $body = [
-            'status' => $status->value,
-            'checks' => array_map(
-                static fn(HealthResult $r): array => $r->toArray(),
-                $results,
-            ),
-        ];
-
-        $response = $this->responseFactory->createResponse($httpStatus);
-        $response->getBody()->write(json_encode($body, JSON_THROW_ON_ERROR));
-
-        return $response->withHeader(name: 'Content-Type', value: 'application/json');
+        return ChecksJsonResponse::create($this->responseFactory, $this->checker->run());
     }
 }

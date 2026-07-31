@@ -134,15 +134,21 @@ new CallbackHealthCheck(
 **Правило:** никогда не помещайте проверки внешних сервисов (БД, Redis) в liveness —
 медленная БД приведёт к перезапуску контейнера. Их место — только в readiness.
 
+`/ready` и `/health` выполняют одни и те же проверки и возвращают одинаковый JSON —
+разница в аудитории. `/ready` — для автоматики (балансировщик, Kubernetes), которая
+решает, направлять ли трафик; `/health` — для людей, дашбордов и внешнего мониторинга.
+Раздельные маршруты позволяют применять разные правила доступа — например, `/ready`
+доступен только оркестратору, а `/health` — за авторизацией.
+
 ## Справочник по API
 
 ### `HealthResult`
 
 ```php
 HealthResult::pass(name: 'db')
-HealthResult::pass(name: 'db', message: 'Connected')
+HealthResult::pass(name: 'db', message: 'Connected', data: ['latencyMs' => 2.1])
 HealthResult::warn(name: 'db', message: 'Slow', data: ['latencyMs' => 950])
-HealthResult::fail(name: 'db', message: 'Connection refused')
+HealthResult::fail(name: 'db', message: 'Connection refused', data: ['errno' => 111])
 
 $result->name       // string
 $result->status     // HealthStatus
@@ -243,12 +249,13 @@ new HealthEndpoint(checker: $checker, responseFactory: $factory)
 
 `warnThresholdMs` (по умолчанию: 1000ms) автоматически повышает `pass` → `warn`,
 когда проверка выполняется слишком долго. Существующие статусы `warn` и `fail`
-никогда не понижаются:
+никогда не понижаются. Исходный `message` сохраняется (threshold-примечание
+дописывается после `; `), `data` не теряется:
 
 ```php
 // warnThresholdMs: 500
 // database check took 750ms → upgraded to warn automatically
-{"name":"database","status":"warn","message":"Check took 750.0ms (threshold: 500.0ms)","elapsedMs":750.0}
+{"name":"database","status":"warn","message":"Connected; Check took 750.0ms (threshold: 500.0ms)","elapsedMs":750.0}
 ```
 
 Настройка через `params.php`:

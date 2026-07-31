@@ -13,39 +13,27 @@ final readonly class HealthResult
 
     public string $name;
 
-    public HealthStatus $status;
-
-    public string $message;
-
-    /**
-     * @var array<string, mixed>
-     */
-    public array $data;
-
-    public float $elapsedMs;
-
     /**
      * @param array<string, mixed> $data
      */
     private function __construct(
         string $name,
-        HealthStatus $status,
-        string $message = '',
-        array $data = [],
-        float $elapsedMs = 0.0,
+        public HealthStatus $status,
+        public string $message = '',
+        public array $data = [],
+        public float $elapsedMs = 0.0,
     ) {
         $this->validateName($name);
 
         $this->name = $name;
-        $this->status = $status;
-        $this->message = $message;
-        $this->data = $data;
-        $this->elapsedMs = $elapsedMs;
     }
 
-    public static function pass(string $name, string $message = ''): self
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function pass(string $name, string $message = '', array $data = []): self
     {
-        return new self(name: $name, status: HealthStatus::Pass, message: $message);
+        return new self(name: $name, status: HealthStatus::Pass, message: $message, data: $data);
     }
 
     /**
@@ -56,9 +44,12 @@ final readonly class HealthResult
         return new self(name: $name, status: HealthStatus::Warn, message: $message, data: $data);
     }
 
-    public static function fail(string $name, string $message = ''): self
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fail(string $name, string $message = '', array $data = []): self
     {
-        return new self(name: $name, status: HealthStatus::Fail, message: $message);
+        return new self(name: $name, status: HealthStatus::Fail, message: $message, data: $data);
     }
 
     /**

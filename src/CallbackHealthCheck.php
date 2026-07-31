@@ -9,7 +9,7 @@ namespace Rasuvaeff\Yii3HealthCheck;
  */
 final class CallbackHealthCheck implements HealthCheck
 {
-    private string $checkName;
+    private readonly string $checkName;
 
     /** @var callable(): HealthResult */
     private $callback;
