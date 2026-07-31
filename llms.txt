@@ -11,7 +11,9 @@ composer require rasuvaeff/yii3-health-check
 - Three endpoints: `LivenessEndpoint` (`/live`), `ReadinessEndpoint` (`/ready`), `HealthEndpoint` (`/health`).
 - **Never** put external service checks (DB, Redis) in liveness — only in readiness/health.
 - Liveness always returns `pass` 200. Readiness/health return 503 on `fail`.
-- Check names: `/^[a-z][a-z0-9_.-]*$/` — throws `InvalidCheckNameException` otherwise.
+- Check names: `/^[a-z][a-z0-9_.-]*\z/` (`\z` anchor, trailing newline rejected) — throws `InvalidCheckNameException` otherwise.
+- Checks are keyed by name: `add()`/constructor silently replace a check with the same name. `runByName()` with an unknown name returns `[]`, and `aggregateStatus([])` is `pass` — guard with `has()`.
+- `/ready`/`/health` expose raw exception messages and topology — restrict access (internal port, ACL). No per-check timeout: set connect/read timeouts inside each check.
 - Exception in `check()` is caught and converted to `HealthResult::fail`.
 - Elapsed time > `warnThresholdMs` auto-upgrades `pass` → `warn`.
 - Aggregation: any `fail` → `fail`; any `warn` (no fail) → `warn`; all `pass` → `pass`.
