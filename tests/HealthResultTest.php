@@ -15,6 +15,7 @@ use Testo\Test;
 
 #[Test]
 #[Covers(HealthResult::class)]
+#[Covers(InvalidCheckNameException::class)]
 final class HealthResultTest
 {
     public function passCreatesResultWithPassStatus(): void

@@ -16,6 +16,7 @@ use Testo\Test;
 
 #[Test]
 #[Covers(CallbackHealthCheck::class)]
+#[Covers(InvalidCheckNameException::class)]
 final class CallbackHealthCheckTest
 {
     public function returnsConfiguredName(): void
