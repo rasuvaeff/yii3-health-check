@@ -296,6 +296,30 @@ final class HealthCheckerTest
         Assert::same($checker->run()['db']->message, 'Check took 500.0ms (threshold: 100.0ms)');
     }
 
+    public function elapsedExactlyAtThresholdDoesNotBecomeWarn(): void
+    {
+        $clock = new FakeClock();
+
+        $checker = new HealthChecker(
+            checks: [
+                new CallbackHealthCheck(
+                    name: 'app',
+                    check: static function () use ($clock): HealthResult {
+                        $clock->advanceByMilliseconds(500.0);
+
+                        return HealthResult::pass(name: 'app');
+                    },
+                ),
+            ],
+            clock: $clock,
+            warnThresholdMs: 500.0,
+        );
+
+        $results = $checker->run();
+
+        Assert::same($results['app']->status, HealthStatus::Pass);
+    }
+
     public function runWithClockWarnsOnSlowCheck(): void
     {
         $clock = new FakeClock();

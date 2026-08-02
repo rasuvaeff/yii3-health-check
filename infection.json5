@@ -14,10 +14,16 @@
     "minMsi": 100,
     "mutators": {
         "@default": true,
-        "GreaterThan": {
-            "ignore": ["Rasuvaeff\\Yii3HealthCheck\\HealthChecker::runCheck"]
-        },
         "global-ignore": [
+            // Rasuvaeff\Yii3HealthCheck\HealthChecker::nowMicrotime — wall-clock
+            // fallback branch (`microtime(true)` when no Psr\Clock is injected).
+            // Mutants here (Plus/arithmetic on the raw timestamp, `usleep`-style
+            // timing changes) are only reachable by racing real wall-clock time;
+            // every behavioral path through this method is already exercised
+            // deterministically via the injected FakeClock in HealthCheckerTest.
+            // ER-003/mutation-php-package: irreducible wall-clock mutant, not a
+            // gap — see infection.json5 in retry/ and yii3-ab-testing-db for the
+            // same documented pattern.
             "Rasuvaeff\\Yii3HealthCheck\\HealthChecker::nowMicrotime"
         ]
     }
