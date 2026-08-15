@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Rasuvaeff\Yii3HealthCheck\Tests;
 
 use Rasuvaeff\PropertyTesting\ArbitraryInterface;
+use Rasuvaeff\PropertyTesting\Classify;
 use Rasuvaeff\PropertyTesting\Gen;
 use Rasuvaeff\PropertyTesting\Property;
 use Rasuvaeff\Yii3HealthCheck\CallbackHealthCheck;
@@ -355,13 +356,36 @@ final class HealthCheckerTest
             default => HealthStatus::Pass,
         };
 
+        // Worst-of has three outcomes and each has to be reached: a run that
+        // only ever saw a Fail somewhere would say nothing about Warn winning
+        // over Pass.
+        // An all-pass list of 1–6 statuses is ~8% of draws; the floor sits
+        // below that with room, because a gate that trips on an unlucky seed
+        // teaches everyone to re-run rather than to read it.
+        Classify::cover($expected === HealthStatus::Pass, 'all pass', 3.0);
+        Classify::cover($expected === HealthStatus::Warn, 'warn wins', 10.0);
+        Classify::cover($expected === HealthStatus::Fail, 'fail wins', 10.0);
+
         Assert::same(HealthChecker::aggregateStatus($results), $expected);
     }
 
     /** @return array<string, ArbitraryInterface> */
     public static function aggregateReturnsWorstSeverityGenerators(): array
     {
-        return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
+        // Bounded length: with the default maximum an all-pass list is
+        // vanishingly rare, and the coverage gate above would never be met.
+        return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2), 6)];
+    }
+
+    /** @return iterable<string, array{list<int>}> */
+    public static function aggregateReturnsWorstSeverityExamples(): iterable
+    {
+        yield 'single pass' => [[0]];
+        yield 'single warn' => [[1]];
+        yield 'single fail' => [[2]];
+        yield 'fail behind a pass' => [[0, 2]];
+        yield 'warn never demoted by later passes' => [[1, 0, 0]];
+        yield 'fail wins over an earlier warn' => [[1, 2]];
     }
 
     #[Property(runs: 400)]
@@ -381,36 +405,139 @@ final class HealthCheckerTest
         return ['codes' => Gen::nonEmptyArrayOf(Gen::intBetween(0, 2))];
     }
 
-    #[Property(runs: 200)]
-    public function thresholdUpgradeNeverLosesData(array $data): void
+    #[Property(runs: 300)]
+    public function aggregateSurvivesAnyPermutation(array $pairs): void
     {
+        // Reversing is one permutation out of n!; a fold that is merely
+        // symmetric would pass that and still depend on the order. The second
+        // element of each pair is a generated sort key, so the permutation is
+        // drawn rather than fixed — and stays reproducible from the seed.
+        $codes = \array_map(static fn(array $pair): int => $pair[0], $pairs);
+
+        $permuted = $pairs;
+        \usort($permuted, static fn(array $a, array $b): int => $a[1] <=> $b[1]);
+        $permutedCodes = \array_map(static fn(array $pair): int => $pair[0], $permuted);
+
+        Classify::when($permutedCodes === $codes, 'identity permutation');
+
+        Assert::same(
+            HealthChecker::aggregateStatus($this->resultsFromCodes($permutedCodes)),
+            HealthChecker::aggregateStatus($this->resultsFromCodes($codes)),
+        );
+    }
+
+    /** @return array<string, ArbitraryInterface> */
+    public static function aggregateSurvivesAnyPermutationGenerators(): array
+    {
+        return [
+            'pairs' => Gen::nonEmptyArrayOf(
+                Gen::tuple(Gen::intBetween(0, 2), Gen::intBetween(0, 1_000)),
+                8,
+            ),
+        ];
+    }
+
+    #[Property(runs: 300)]
+    public function elapsedTimeDecidesTheUpgradeAndNeverTouchesData(
+        array $data,
+        int $thresholdMs,
+        bool $slow,
+        int $offsetMs,
+    ): void {
+        // Built rather than filtered, and never landing on the threshold
+        // itself: elapsed is derived from a clock reading in milliseconds-
+        // since-epoch, so a comparison at exactly the boundary is decided by
+        // double rounding rather than by the rule under test.
+        $elapsedMs = $slow ? $thresholdMs + $offsetMs : max(0, $thresholdMs - $offsetMs);
         $clock = new FakeClock();
 
         $checker = new HealthChecker(
             checks: [
                 new CallbackHealthCheck(
                     name: 'db',
-                    check: static function () use ($clock, $data): HealthResult {
-                        $clock->advanceByMilliseconds(500.0);
+                    check: static function () use ($clock, $data, $elapsedMs): HealthResult {
+                        $clock->advanceByMilliseconds((float) $elapsedMs);
 
                         return HealthResult::pass(name: 'db', data: $data);
                     },
                 ),
             ],
             clock: $clock,
-            warnThresholdMs: 100.0,
+            warnThresholdMs: (float) $thresholdMs,
         );
+
+        Classify::cover($slow, 'upgraded to warn', 30.0);
+        Classify::cover(!$slow, 'left as pass', 30.0);
+        Classify::when($data === [], 'empty payload');
 
         $result = $checker->run()['db'];
 
-        Assert::same($result->status, HealthStatus::Warn);
+        Assert::same($result->status, $slow ? HealthStatus::Warn : HealthStatus::Pass);
+        // The upgrade rewrites the status and the message; whatever the check
+        // reported has to travel through untouched, which is what makes a warn
+        // actionable.
         Assert::same($result->data, $data);
     }
 
     /** @return array<string, ArbitraryInterface> */
-    public static function thresholdUpgradeNeverLosesDataGenerators(): array
+    public static function elapsedTimeDecidesTheUpgradeAndNeverTouchesDataGenerators(): array
     {
-        return ['data' => Gen::arrayOf(Gen::intBetween(-1000, 1000))];
+        return [
+            // A dictionary, not a list: check payloads are string-keyed maps
+            // in every documented usage.
+            'data' => Gen::dictOf(
+                Gen::stringFrom('abcdefghijklmnopqrstuvwxyz_', minLength: 1, maxLength: 8),
+                Gen::intBetween(-1000, 1000),
+                maxSize: 6,
+            ),
+            'thresholdMs' => Gen::intBetween(50, 300),
+            'slow' => Gen::bool(),
+            'offsetMs' => Gen::intBetween(5, 150),
+        ];
+    }
+
+    /** @return iterable<string, array{array<string, int>, int, bool, int}> */
+    public static function elapsedTimeDecidesTheUpgradeAndNeverTouchesDataExamples(): iterable
+    {
+        yield 'instant check with a payload' => [['queue' => 3], 100, false, 100];
+        yield 'well over the threshold' => [[], 100, true, 150];
+        yield 'empty payload survives the upgrade' => [[], 50, true, 5];
+    }
+
+    #[Property(runs: 200)]
+    public function runIsKeyedByEveryDistinctCheckName(array $names): void
+    {
+        $checker = new HealthChecker(
+            checks: \array_map(
+                static fn(string $name): CallbackHealthCheck => new CallbackHealthCheck(
+                    name: $name,
+                    check: static fn(): HealthResult => HealthResult::pass(name: $name),
+                ),
+                $names,
+            ),
+        );
+
+        $results = $checker->run();
+
+        Assert::same(\array_keys($results), $names);
+        Assert::same(HealthChecker::aggregateStatus($results), HealthStatus::Pass);
+    }
+
+    /** @return array<string, ArbitraryInterface> */
+    public static function runIsKeyedByEveryDistinctCheckNameGenerators(): array
+    {
+        // Unique by construction: the checker keys by name, so duplicates
+        // would collapse and turn a count assertion into a discard. The names
+        // themselves come from the format HealthResult validates, so the
+        // generator and the validator cannot drift apart into a discard
+        // either.
+        return [
+            'names' => Gen::uniqueArrayOf(
+                Gen::regex('[a-z][a-z0-9_.-]{0,5}'),
+                minSize: 1,
+                maxSize: 5,
+            ),
+        ];
     }
 
     /**

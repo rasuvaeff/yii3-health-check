@@ -122,7 +122,7 @@ final class HealthChecker
             return (float) $now->format('U.u') * 1000.0;
         }
 
-        return microtime(true) * 1000.0;
+        return microtime(as_float: true) * 1000.0;
     }
 
     private function elapsedMs(float $start): float
