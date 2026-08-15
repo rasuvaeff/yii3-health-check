@@ -359,7 +359,10 @@ final class HealthCheckerTest
         // Worst-of has three outcomes and each has to be reached: a run that
         // only ever saw a Fail somewhere would say nothing about Warn winning
         // over Pass.
-        Classify::cover($expected === HealthStatus::Pass, 'all pass', 5.0);
+        // An all-pass list of 1–6 statuses is ~8% of draws; the floor sits
+        // below that with room, because a gate that trips on an unlucky seed
+        // teaches everyone to re-run rather than to read it.
+        Classify::cover($expected === HealthStatus::Pass, 'all pass', 3.0);
         Classify::cover($expected === HealthStatus::Warn, 'warn wins', 10.0);
         Classify::cover($expected === HealthStatus::Fail, 'fail wins', 10.0);
 
