@@ -31,7 +31,7 @@ final class LivenessEndpointTest
         Assert::same($response->getStatusCode(), 200);
 
         /** @var FakeResponse $response */
-        $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
+        $body = json_decode($response->getBodyContents(), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         assert(is_array($body));
         Assert::same($body['status'], 'pass');
     }
@@ -43,7 +43,7 @@ final class LivenessEndpointTest
         $response = $endpoint->handle(new FakeRequest());
 
         /** @var FakeResponse $response */
-        $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
+        $body = json_decode($response->getBodyContents(), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         assert(is_array($body));
         Assert::same($body['message'], 'alive');
     }
@@ -58,7 +58,7 @@ final class LivenessEndpointTest
         $response = $endpoint->handle(new FakeRequest());
 
         /** @var FakeResponse $response */
-        $body = json_decode($response->getBodyContents(), true, 512, JSON_THROW_ON_ERROR);
+        $body = json_decode($response->getBodyContents(), associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         assert(is_array($body));
         Assert::same($body['message'], 'ok');
     }
