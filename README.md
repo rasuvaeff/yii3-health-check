@@ -15,7 +15,7 @@ Health check endpoints for Yii3: `/live`, `/ready`, `/health`. PSR-15 request ha
 
 ## Requirements
 
-- PHP 8.3+
+- PHP 8.3 – 8.6
 - `psr/clock` ^1.0
 - `psr/http-factory` ^1.0
 - `psr/http-message` ^2.0
